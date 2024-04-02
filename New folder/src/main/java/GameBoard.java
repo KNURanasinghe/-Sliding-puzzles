@@ -1,21 +1,21 @@
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.Graphics;
-import java.awt.event.KeyAdapter;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.KeyEvent;
-import java.util.ArrayDeque;
+import java.awt.event.KeyListener;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.concurrent.Phaser;
 import java.util.Queue;
-import java.util.concurrent.Phaser; // Import Phaser class
+import java.util.ArrayDeque;
+import java.io.BufferedReader;
+import java.util.stream.Collectors;
 
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
 
-public class GameBoard extends JPanel {
+
+public class GameBoard extends JPanel implements KeyListener {
     private final int CELL_SIZE = 50;
-    private final int NUM_ROWS = 10;
-    private final int NUM_COLS = 10;
     private char[][] map;
     private int playerRow;
     private int playerCol;
@@ -30,26 +30,7 @@ public class GameBoard extends JPanel {
         this.phaser = new Phaser(1); // Initialize Phaser with initial party count of 1
 
         setFocusable(true);
-        addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                switch (e.getKeyCode()) {
-                    case KeyEvent.VK_UP:
-                        movePlayer(-1, 0);
-                        break;
-                    case KeyEvent.VK_DOWN:
-                        movePlayer(1, 0);
-                        break;
-                    case KeyEvent.VK_LEFT:
-                        movePlayer(0, -1);
-                        break;
-                    case KeyEvent.VK_RIGHT:
-                        movePlayer(0, 1);
-                        break;
-                }
-                repaint();
-            }
-        });
+        addKeyListener(this);
     }
 
     private void movePlayer(int rowOffset, int colOffset) {
@@ -75,7 +56,7 @@ public class GameBoard extends JPanel {
     }
 
     private boolean isValidMove(int newRow, int newCol) {
-        return newRow >= 0 && newRow < NUM_ROWS && newCol >= 0 && newCol < NUM_COLS &&
+        return newRow >= 0 && newRow < map.length && newCol >= 0 && newCol < map[0].length &&
                 map[newRow][newCol] != '0'; // Check if the target cell is not a wall
     }
 
@@ -94,8 +75,8 @@ public class GameBoard extends JPanel {
     }
 
     private int findStartRow() {
-        for (int i = 0; i < NUM_ROWS; i++) {
-            for (int j = 0; j < NUM_COLS; j++) {
+        for (int i = 0; i < map.length; i++) {
+            for (int j = 0; j < map[i].length; j++) {
                 if (map[i][j] == 'S') {
                     return i;
                 }
@@ -105,8 +86,8 @@ public class GameBoard extends JPanel {
     }
 
     private int findStartCol() {
-        for (int i = 0; i < NUM_ROWS; i++) {
-            for (int j = 0; j < NUM_COLS; j++) {
+        for (int i = 0; i < map.length; i++) {
+            for (int j = 0; j < map[i].length; j++) {
                 if (map[i][j] == 'S') {
                     return j;
                 }
@@ -116,7 +97,7 @@ public class GameBoard extends JPanel {
     }
 
     private int calculateShortestPath() {
-        boolean[][] visited = new boolean[NUM_ROWS][NUM_COLS];
+        boolean[][] visited = new boolean[map.length][map[0].length];
         Queue<int[]> queue = new ArrayDeque<>();
         queue.add(new int[]{playerRow, playerCol, 0});
 
@@ -146,102 +127,188 @@ public class GameBoard extends JPanel {
         return -1; // No path found
     }
 
-    @Override
-    protected void paintComponent(Graphics g) {
-        super.paintComponent(g);
+   @Override
+protected void paintComponent(Graphics g) {
+    super.paintComponent(g);
 
-        int startX = (getWidth() - NUM_COLS * CELL_SIZE) / 2;
-        int startY = (getHeight() - NUM_ROWS * CELL_SIZE) / 2;
+    // Calculate cell size based on JFrame dimensions
+    int cellSize = Math.min(getWidth() / map[0].length, getHeight() / map.length);
 
-        // Draw grid lines
-        for (int row = 0; row <= NUM_ROWS; row++) {
-            int y = startY + row * CELL_SIZE;
-            g.drawLine(startX, y, startX + NUM_COLS * CELL_SIZE, y);
-        }
-        for (int col = 0; col <= NUM_COLS; col++) {
-            int x = startX + col * CELL_SIZE;
-            g.drawLine(x, startY, x, startY + NUM_ROWS * CELL_SIZE);
-        }
+    int startX = (getWidth() - map[0].length * cellSize) / 2;
+    int startY = (getHeight() - map.length * cellSize) / 2;
 
-        // Draw cells and objects
-        for (int row = 0; row < NUM_ROWS; row++) {
-            for (int col = 0; col < NUM_COLS; col++) {
-                int x = startX + col * CELL_SIZE;
-                int y = startY + row * CELL_SIZE;
-                if (map[row][col] == '0') {
-                    g.setColor(Color.BLACK);
-                    g.fillRect(x, y, CELL_SIZE, CELL_SIZE);
-                } else if (map[row][col] == 'S') {
-                    g.setColor(Color.GREEN);
-                    g.fillRect(x, y, CELL_SIZE, CELL_SIZE);
-                    g.setColor(Color.BLACK);
-                    g.drawString("S", x + CELL_SIZE / 2, y + CELL_SIZE / 2);
-                } else if (map[row][col] == 'F') {
-                    g.setColor(Color.RED);
-                    g.fillRect(x, y, CELL_SIZE, CELL_SIZE);
-                    g.setColor(Color.BLACK);
-                    g.drawString("F", x + CELL_SIZE / 2, y + CELL_SIZE / 2);
-                }
+    // Draw grid lines
+    for (int row = 0; row <= map.length; row++) {
+        int y = startY + row * cellSize;
+        g.drawLine(startX, y, startX + map[0].length * cellSize, y);
+    }
+    for (int col = 0; col <= map[0].length; col++) {
+        int x = startX + col * cellSize;
+        g.drawLine(x, startY, x, startY + map.length * cellSize);
+    }
+
+    // Draw cells and objects
+    for (int row = 0; row < map.length; row++) {
+        for (int col = 0; col < map[0].length; col++) {
+            int x = startX + col * cellSize;
+            int y = startY + row * cellSize;
+            if (map[row][col] == '0') {
+                g.setColor(Color.BLACK);
+                g.fillRect(x, y, cellSize, cellSize);
+            } else if (map[row][col] == 'S') {
+                g.setColor(Color.GREEN);
+                g.fillRect(x, y, cellSize, cellSize);
+                g.setColor(Color.BLACK);
+                g.drawString("S", x + cellSize / 2, y + cellSize / 2);
+            } else if (map[row][col] == 'F') {
+                g.setColor(Color.RED);
+                g.fillRect(x, y, cellSize, cellSize);
+                g.setColor(Color.BLACK);
+                g.drawString("F", x + cellSize / 2, y + cellSize / 2);
             }
         }
-
-        // Draw player
-        int playerX = startX + playerCol * CELL_SIZE;
-        int playerY = startY + playerRow * CELL_SIZE;
-        g.setColor(Color.BLUE);
-        g.fillOval(playerX, playerY, CELL_SIZE, CELL_SIZE);
-
-        // Draw moves left
-        g.setColor(Color.BLACK);
-        g.setFont(new Font("Arial", Font.BOLD, 20));
-        g.drawString("Moves Left: " + movesLeft, 20, 30);
-
-        // Draw final movement if the game is won
-        if (movesLeft == 0 || map[playerRow][playerCol] == 'F') {
-            g.setColor(Color.YELLOW); // Set color for final movement
-            g.fillOval(playerX, playerY, CELL_SIZE, CELL_SIZE);
-        }
     }
+
+    // Draw player
+    int playerX = startX + playerCol * cellSize;
+    int playerY = startY + playerRow * cellSize;
+    g.setColor(Color.BLUE);
+    g.fillOval(playerX, playerY, cellSize, cellSize);
+
+    // Draw moves left
+    g.setColor(Color.BLACK);
+    g.setFont(new Font("Arial", Font.BOLD, 20));
+    g.drawString("Moves Left: " + movesLeft, 20, 30);
+
+    // Draw final movement if the game is won
+    if (movesLeft == 0 || map[playerRow][playerCol] == 'F') {
+        g.setColor(Color.YELLOW); // Set color for final movement
+        g.fillOval(playerX, playerY, cellSize, cellSize);
+    }
+}
 
     @Override
     public Dimension getPreferredSize() {
         return new Dimension(800, 600);
     }
+    @Override
+    public void keyPressed(KeyEvent e) {
+        switch (e.getKeyCode()) {
+            case KeyEvent.VK_UP:
+                movePlayer(-1, 0);
+                break;
+            case KeyEvent.VK_DOWN:
+                movePlayer(1, 0);
+                break;
+            case KeyEvent.VK_LEFT:
+                movePlayer(0, -1);
+                break;
+            case KeyEvent.VK_RIGHT:
+                movePlayer(0, 1);
+                break;
+        }
+        repaint();
+    }
+    @Override
+    public void keyTyped(KeyEvent e) {}
+
+    @Override
+    public void keyReleased(KeyEvent e) {}
 
     public static void main(String[] args) {
-        char[][] map = {
-                {'.', '.', '.', '.', '0', '.', '.', '.', '.', 'S'},
-                {'.', '.', '.', '.', '0', '.', '.', '.', '.', '.'},
-                {'0', '.', '.', '.', '.', '.', '0', '.', '.', '0'},
-                {'.', '.', '.', '0', '.', '.', '.', '.', '0', '.'},
-                {'.', 'F', '.', '.', '.', '.', '.', '.', '0', '.'},
-                {'.', '0', '.', '.', '.', '.', '.', '.', '.', '.'},
-                {'.', '.', '.', '.', '.', '.', '.', '.', '0', '.'},
-                {'0', '.', '0', '.', '0', '.', '.', '.', '0', '0'},
-                {'.', '.', '.', '.', '.', '.', '.', '.', '.', '0'},
-                {'.', '0', '0', '.', '.', '.', '.', '.', '.', '.'}
-        };
-
-        // Find start position
-        int startRow = -1;
-        int startCol = -1;
-        for (int i = 0; i < map.length; i++) {
-            for (int j = 0; j < map[i].length; j++) {
-                if (map[i][j] == 'S') {
-                    startRow = i;
-                    startCol = j;
-                    break;
-                }
+        String gameType = (String) JOptionPane.showInputDialog(null,
+                "Select game type:",
+                "Game Type Selection",
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                new String[]{"maze", "puzzle"},
+                "maze");
+    
+        String directory = "";
+        if (gameType.equals("maze")) {
+            directory = "F:/Projects/-Sliding-puzzles/New folder/src/main/java/maps/maze";
+        } else if (gameType.equals("puzzle")) {
+            directory = "F:/Projects/-Sliding-puzzles/New folder/src/main/java/maps/puzzel";
+        } else {
+            JOptionPane.showMessageDialog(null, "Invalid game type.");
+            System.exit(1);
+        }
+    
+        System.out.println("Selected Directory: " + directory); // Debug statement
+    
+        File directoryFile = new File(directory);
+        if (!directoryFile.exists()) {
+            JOptionPane.showMessageDialog(null, "The selected directory does not exist.");
+            System.exit(1);
+        }
+        
+        File[] mapFiles = directoryFile.listFiles();
+        if (mapFiles == null || mapFiles.length == 0) {
+            JOptionPane.showMessageDialog(null, "No map files found in the selected directory.");
+            System.exit(1);
+        }
+    
+        for (File file : mapFiles) {
+            if (file.isFile()) {
+                System.out.println(file.getName());
             }
         }
-
-        JFrame frame = new JFrame("Sliding Puzzle Game");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        GameBoard gameBoard = new GameBoard(map, startRow, startCol);
-        frame.add(gameBoard);
-        frame.pack();
-        frame.setLocationRelativeTo(null);
-        frame.setVisible(true);
-        gameBoard.requestFocusInWindow();
+    
+        String[] mapNames = new String[mapFiles.length];
+        for (int i = 0; i < mapFiles.length; i++) {
+            mapNames[i] = mapFiles[i].getName();
+        }
+    
+        String selectedMap = (String) JOptionPane.showInputDialog(null,
+                "Select a map:",
+                "Map Selection",
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                mapNames,
+                mapNames[0]);
+    
+        try {
+            char[][] map = loadMap(directory + "/" + selectedMap);
+            int startRow = -1;
+            int startCol = -1;
+            for (int i = 0; i < map.length; i++) {
+                for (int j = 0; j < map[i].length; j++) {
+                    if (map[i][j] == 'S') {
+                        startRow = i;
+                        startCol = j;
+                        break;
+                    }
+                }
+            }
+    
+            JFrame frame = new JFrame("Game Board");
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            GameBoard gameBoard = new GameBoard(map, startRow, startCol);
+            frame.add(gameBoard);
+            frame.pack();
+            frame.setLocationRelativeTo(null);
+            frame.setVisible(true);
+            gameBoard.requestFocusInWindow();
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(null, "Error loading map file: " + e.getMessage());
+        }
     }
+    private static char[][] loadMap(String fileName) throws IOException {
+        try (BufferedReader reader = Files.newBufferedReader(Paths.get(fileName))) {
+            String content = reader.lines().collect(Collectors.joining("\n"));
+            System.out.println(content);
+            String[] lines = content.split("\n");
+            char[][] map = new char[lines.length][lines[0].length()];
+            for (int i = 0; i < lines.length; i++) {
+                for (int j = 0; j < lines[i].length(); j++) {
+                    map[i][j] = lines[i].charAt(j);
+                }
+            }
+            return map;
+        }
+    }
+    
+    
+    
+    
 }
