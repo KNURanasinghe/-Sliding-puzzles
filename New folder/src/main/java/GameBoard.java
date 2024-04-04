@@ -142,13 +142,13 @@ public class GameBoard extends JPanel implements KeyListener {
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-
+    
         // Calculate cell size based on JFrame dimensions
         int cellSize = Math.min(getWidth() / map[0].length, getHeight() / map.length);
-
+    
         int startX = (getWidth() - map[0].length * cellSize) / 2;
         int startY = (getHeight() - map.length * cellSize) / 2;
-
+    
         // Draw grid lines
         for (int row = 0; row <= map.length; row++) {
             int y = startY + row * cellSize;
@@ -158,7 +158,7 @@ public class GameBoard extends JPanel implements KeyListener {
             int x = startX + col * cellSize;
             g.drawLine(x, startY, x, startY + map.length * cellSize);
         }
-
+    
         // Draw cells and objects
         for (int row = 0; row < map.length; row++) {
             for (int col = 0; col < map[0].length; col++) {
@@ -180,28 +180,33 @@ public class GameBoard extends JPanel implements KeyListener {
                 }
             }
         }
-
+    
         // Draw player
         int playerX = startX + playerCol * cellSize;
         int playerY = startY + playerRow * cellSize;
         g.setColor(Color.BLUE);
         g.fillOval(playerX, playerY, cellSize, cellSize);
-
-        // Draw moves left
+    
+        // Calculate position for "Moves Left" text based on frame size
+        int textX = getWidth() / 20; // Adjust this value to change the horizontal position
+        int textY = getHeight() / 18; // Adjust this value to change the vertical position
+    
+        // Draw moves left with dynamic position
         g.setColor(Color.BLACK);
         g.setFont(new Font("Arial", Font.BOLD, 20));
-        g.drawString("Moves Left: " + movesLeft, 20, 30);
-
+        g.drawString("Moves Left: " + movesLeft, textX, textY);
+    
         // Draw final movement if the game is won
         if (movesLeft == 0 || map[playerRow][playerCol] == 'F') {
             g.setColor(Color.YELLOW); // Set color for final movement
             g.fillOval(playerX, playerY, cellSize, cellSize);
         }
     }
+    
 
     @Override
     public Dimension getPreferredSize() {
-        return new Dimension(800, 600);
+        return new Dimension(1600, 900);
     }
 
     @Override
