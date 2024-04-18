@@ -1,0 +1,29 @@
+Data Structures:
+2D Array (char[][]):
+
+Represents the game map where each character represents a cell with specific properties like walls, start ('S'), finish ('F'), or empty spaces.
+Queue (ArrayDeque):
+
+Used for the breadth-first search (BFS) algorithm to find the shortest path from the starting point to the finish point.
+Phaser:
+
+Used for synchronizing player movements and game state changes.
+Algorithms:
+Breadth-First Search (BFS):
+Used to find the shortest path from the starting point ('S') to the finish point ('F') on the game map.
+Other Components:
+Swing Components:
+
+The application uses Swing components such as JPanel, JFrame, and JOptionPane for GUI.
+Key Listeners:
+
+Implements KeyListener interface to handle keyboard inputs for moving the player character.
+File Handling:
+
+Reads map files from the file system and loads them into the game map data structure.
+Graphics Drawing:
+
+Uses Java's Graphics class to draw the game map, player character, walls, start, finish, and other game elements on the screen.
+User Interaction:
+
+Shows dialog boxes using JOptionPane for selecting game type, map selection, and displaying game over messages.
