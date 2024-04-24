@@ -7,10 +7,13 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.*;
 import java.util.Queue;
 import java.util.ArrayDeque;
-import java.util.concurrent.Phaser;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collectors;
+
 
 public class GameBoard extends JPanel implements KeyListener {
     private final int CELL_SIZE = 50;
@@ -18,14 +21,14 @@ public class GameBoard extends JPanel implements KeyListener {
     private int playerRow;
     private int playerCol;
     private int movesLeft;
-    private Phaser phaser; // Add Phaser field
+   // private Phaser phaser; // Add Phaser field
 
     public GameBoard(char[][] map, int playerRow, int playerCol) {
         this.map = map;
         this.playerRow = playerRow;
         this.playerCol = playerCol;
-        this.movesLeft = calculateShortestPath();
-        this.phaser = new Phaser(1); // Initialize Phaser with initial party count of 1
+        this.movesLeft = calculateShortestPath().length() / 4; // Length of path divided by 4 to get moves count
+       // this.phaser = new Phaser(1); // Initialize Phaser with initial party count of 1
 
         setFocusable(true);
         addKeyListener(this);
@@ -50,7 +53,7 @@ public class GameBoard extends JPanel implements KeyListener {
             endGame(false); // End game with loss if user hits a wall
             return;
         }
-        phaser.arriveAndAwaitAdvance(); // Synchronize player movement
+       // phaser.arriveAndAwaitAdvance(); // Synchronize player movement
     }
 
     private boolean isValidMove(int newRow, int newCol) {
@@ -73,8 +76,8 @@ public class GameBoard extends JPanel implements KeyListener {
             // Reset game
             playerRow = findStartRow();
             playerCol = findStartCol();
-            movesLeft = calculateShortestPath();
-            phaser.arriveAndAwaitAdvance(); // Synchronize end of game
+            movesLeft = calculateShortestPath().length() / 4; // Recalculate moves count
+           // phaser.arriveAndAwaitAdvance(); // Synchronize end of game
             repaint();
         } else { // Main Menu
             // Close current game window
@@ -108,23 +111,32 @@ public class GameBoard extends JPanel implements KeyListener {
         return 0; // Default start column
     }
 
-    private int calculateShortestPath() {
+    private String calculateShortestPath() {
         boolean[][] visited = new boolean[map.length][map[0].length];
         Queue<int[]> queue = new ArrayDeque<>();
         queue.add(new int[]{playerRow, playerCol, 0});
-
+        Map<String, String> parentMap = new HashMap<>();
+        parentMap.put(playerRow + "," + playerCol, "");
+    
         while (!queue.isEmpty()) {
             int[] current = queue.poll();
             int row = current[0];
             int col = current[1];
             int distance = current[2];
-
+    
             if (map[row][col] == 'F') {
-                return distance;
+                // Path found, reconstruct and return the path
+                StringBuilder path = new StringBuilder();
+                String currentCell = row + "," + col;
+                while (!currentCell.isEmpty()) {
+                    path.insert(0, currentCell + " <- ");
+                    currentCell = parentMap.get(currentCell);
+                }
+                return path.toString().trim(); // Trim to remove extra whitespace at the end
             }
-
+    
             visited[row][col] = true;
-
+    
             // Check all valid neighboring cells
             int[][] directions = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
             for (int[] dir : directions) {
@@ -132,23 +144,25 @@ public class GameBoard extends JPanel implements KeyListener {
                 int newCol = col + dir[1];
                 if (isValidMove(newRow, newCol) && !visited[newRow][newCol]) {
                     queue.add(new int[]{newRow, newCol, distance + 1});
+                    parentMap.put(newRow + "," + newCol, row + "," + col);
                 }
             }
         }
-
-        return -1; // No path found
+    
+        return "No path found";
     }
+    
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-    
+
         // Calculate cell size based on JFrame dimensions
         int cellSize = Math.min(getWidth() / map[0].length, getHeight() / map.length);
-    
+
         int startX = (getWidth() - map[0].length * cellSize) / 2;
         int startY = (getHeight() - map.length * cellSize) / 2;
-    
+
         // Draw grid lines
         for (int row = 0; row <= map.length; row++) {
             int y = startY + row * cellSize;
@@ -158,7 +172,7 @@ public class GameBoard extends JPanel implements KeyListener {
             int x = startX + col * cellSize;
             g.drawLine(x, startY, x, startY + map.length * cellSize);
         }
-    
+
         // Draw cells and objects
         for (int row = 0; row < map.length; row++) {
             for (int col = 0; col < map[0].length; col++) {
@@ -180,29 +194,27 @@ public class GameBoard extends JPanel implements KeyListener {
                 }
             }
         }
-    
+
         // Draw player
         int playerX = startX + playerCol * cellSize;
         int playerY = startY + playerRow * cellSize;
         g.setColor(Color.BLUE);
         g.fillOval(playerX, playerY, cellSize, cellSize);
-    
+
         // Calculate position for "Moves Left" text based on frame size
         int textX = getWidth() / 20; // Adjust this value to change the horizontal position
         int textY = getHeight() / 18; // Adjust this value to change the vertical position
-    
+
         // Draw moves left with dynamic position
-        g.setColor(Color.BLACK);
-        g.setFont(new Font("Arial", Font.BOLD, 20));
-        g.drawString("Moves Left: " + movesLeft, textX, textY);
-    
+       
+
         // Draw final movement if the game is won
         if (movesLeft == 0 || map[playerRow][playerCol] == 'F') {
             g.setColor(Color.YELLOW); // Set color for final movement
             g.fillOval(playerX, playerY, cellSize, cellSize);
         }
     }
-    
+
 
     @Override
     public Dimension getPreferredSize() {
@@ -229,10 +241,12 @@ public class GameBoard extends JPanel implements KeyListener {
     }
 
     @Override
-    public void keyTyped(KeyEvent e) {}
+    public void keyTyped(KeyEvent e) {
+    }
 
     @Override
-    public void keyReleased(KeyEvent e) {}
+    public void keyReleased(KeyEvent e) {
+    }
 
     public static void main(String[] args) {
         showGameTypeSelectionMenu();
@@ -314,6 +328,8 @@ public class GameBoard extends JPanel implements KeyListener {
                 frame.setLocationRelativeTo(null);
                 frame.setVisible(true);
                 gameBoard.requestFocusInWindow();
+                // After the game ends, print the path to win
+                System.out.println("Path to win: " + gameBoard.calculateShortestPath());
             } catch (IOException e) {
                 JOptionPane.showMessageDialog(null, "Error loading map file: " + e.getMessage());
             }
